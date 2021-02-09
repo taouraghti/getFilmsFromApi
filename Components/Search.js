@@ -11,19 +11,36 @@ class Search extends React.Component{
             films: [],
             isLoading: false
         }
-        this.searchedText = ""
+        this.searchedText = "",
+        this.page = 0,
+        this.totalPage = 0
     }
     _searchText(text){
         this.searchedText = text
     }
+
+    _searchFilms()
+    {
+        this.page = 0
+        this.totalPage = 0
+        this.setState({
+            films:[]
+        },() => this._loadFilms())
+        
+    }
     _loadFilms(){
         this.setState({isLoading:true})
         if(this.searchedText.length > 0)
-            getFilmsFromApiWithSearchedText(this.searchedText).then(data =>
-                this.setState({
-                    films: data.results,
-                    isLoading:false
-                }))
+            getFilmsFromApiWithSearchedText(this.searchedText, this.page + 1).then(data =>
+                {
+                    this.page = data.page,
+                    this.totalPage = data.total_pages,
+                    this.setState({
+                        films: this.state.films.concat(data.results),
+                        isLoading:false
+                    })  
+                }
+                )
       }
 
     _displayLoading(){
@@ -37,15 +54,24 @@ class Search extends React.Component{
         }
     }
 
+    _displayDetailsForFilm = (idFilm) => {
+        this.props.navigation.navigate('FilmDetails',{idFilm: idFilm});    
+    }
+
     render(){
         return(
             <View style={styles.main_container}>
-                <TextInput onSubmitEditing={() => this._loadFilms()} onChangeText={(text) => this._searchText(text)} placeholder="Titre de film" style={styles.TextInput}/>
-                <Button title="Rechercher" style={{height:50}} onPress={ () => this._loadFilms() }/>
+                <TextInput onSubmitEditing={() => this._searchFilms()} onChangeText={(text) => this._searchText(text)} placeholder="Titre de film" style={styles.TextInput}/>
+                <Button title="Rechercher" style={{height:50}} onPress={ () => this._searchFilms() }/>
                 <FlatList
                     data={this.state.films}
+                    onEndReachedThreshold={0.5}
+                    onEndReached={()=>{
+                        if(this.page < this.totalPage)
+                            this._loadFilms();
+                    }}
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={({item}) => <FilmItem film={item}/>}
+                    renderItem={({item}) => <FilmItem film={item} displayDetailsForFilm={this._displayDetailsForFilm}/>}
                 />
                 {this._displayLoading()}
             </View>
